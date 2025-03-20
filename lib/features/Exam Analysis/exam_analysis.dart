@@ -293,7 +293,7 @@ class _ExamAnalysisState extends State<ExamAnalysis> {
           ),
           const SizedBox(height: 20),
           _buildFileUploadButton(
-            label: 'Upload Excel (StudentsAnswersExcelFile)',
+            label: 'Upload Excel',
             icon: Icons.table_chart,
             fileType: 'Excel',
             onTap: _pickExcel,
@@ -301,7 +301,7 @@ class _ExamAnalysisState extends State<ExamAnalysis> {
           ),
           const SizedBox(height: 20),
           _buildFileUploadButton(
-            label: 'Upload PDF (ExamPDF_File)',
+            label: 'Upload PDF',
             icon: Icons.picture_as_pdf,
             fileType: 'PDF',
             onTap: _pickPDF,

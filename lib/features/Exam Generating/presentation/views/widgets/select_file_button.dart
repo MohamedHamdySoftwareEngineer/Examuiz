@@ -28,13 +28,16 @@ class _SelectFileButtonState extends State<SelectFileButton> {
   String? fileName;
   String? errorDetails;
 
-  /// Inserts an explicit page-break div before the answers section.
-  String _injectPageBreak(String htmlContent) {
-    // This inserts a div with a page break before the answers section.
-    return htmlContent.replaceAll(
-      "<section class='answers'>",
-      "<div style='page-break-before: always;'></div><section class='answers'>",
-    );
+  /// Injects CSS that adds a margin to the body and forces the answers section
+  /// (marked with <section class='answers'>) to start on a new page.
+  String _injectStyles(String htmlContent) {
+    const String styleBlock =
+        "<style> body { margin: 20px; } .answers { page-break-before: always; } </style>";
+    if (htmlContent.contains("<head>")) {
+      return htmlContent.replaceFirst("<head>", "<head>$styleBlock");
+    } else {
+      return "$styleBlock$htmlContent";
+    }
   }
 
   Future<void> _pickFile() async {
@@ -287,8 +290,8 @@ class _SelectFileButtonState extends State<SelectFileButton> {
             TextButton(
               onPressed: () async {
                 String htmlContent = utf8.decode(htmlBytes);
-                // Inject an explicit page-break before the answers section.
-                String modifiedHtml = _injectPageBreak(htmlContent);
+                // Inject our CSS for margins and page break.
+                String modifiedHtml = _injectStyles(htmlContent);
                 Directory tempDir = await getTemporaryDirectory();
                 File pdfFile = await HtmlToPdf.convertFromHtmlContent(
                   htmlContent: modifiedHtml,
@@ -303,8 +306,7 @@ class _SelectFileButtonState extends State<SelectFileButton> {
                 );
                 Navigator.of(context).pop(); // Close dialog
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                      content: Text('PDF file saved at ${pdfFile.path}')),
+                  SnackBar(content: Text('PDF file saved at ${pdfFile.path}')),
                 );
                 await OpenFilex.open(pdfFile.path);
                 if (widget.onHtmlReceived != null) {

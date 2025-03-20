@@ -11,19 +11,22 @@ import 'package:open_filex/open_filex.dart';
 class ExamGenerating extends StatelessWidget {
   const ExamGenerating({super.key});
 
-  /// Inserts a page-break before the answers section.
-  /// Since your answers are marked with <section class='answers'>, we insert an explicit div before it.
-  String _injectPageBreak(String htmlContent) {
-    return htmlContent.replaceAll(
-      "<section class='answers'>",
-      "<div style='page-break-before: always;'></div><section class='answers'>",
-    );
+  /// Inserts a CSS style block into the HTML that adds margins and forces the answers
+  /// section (marked with <section class='answers'>) to start on a new page.
+  String _injectStyles(String htmlContent) {
+    const String styleBlock =
+        "<style> body { margin: 20px; } .answers { page-break-before: always; } </style>";
+    if (htmlContent.contains("<head>")) {
+      return htmlContent.replaceFirst("<head>", "<head>$styleBlock");
+    } else {
+      return "$styleBlock$htmlContent";
+    }
   }
 
   /// Converts an HTML string to a PDF file.
-  /// The HTML is modified so that the answers section starts on a new page.
+  /// The HTML is modified so that the answers section appears on its own page and the page margins are set.
   Future<File> _convertHtmlToPdf(String htmlContent) async {
-    String modifiedHtml = _injectPageBreak(htmlContent);
+    String modifiedHtml = _injectStyles(htmlContent);
     Directory tempDir = await getTemporaryDirectory();
     File generatedPdfFile = await HtmlToPdf.convertFromHtmlContent(
       htmlContent: modifiedHtml,
@@ -90,7 +93,7 @@ class ExamGenerating extends StatelessWidget {
           ),
           const SizedBox(height: 15),
           Text(
-            'Select your PDF file to generate quiz questions',
+            'Select your PDF file to generate exam questions',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 16,
