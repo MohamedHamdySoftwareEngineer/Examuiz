@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/Choice Screen/choice_screen.dart';
 import '../../features/Exam Generating/presentation/views/exam_generating.dart';
-import '../../features/Exam Marking/exam_marking.dart';
+import '../../features/Exam Analysis/exam_analysis.dart';
 
 abstract class AppRouter {
   static const rSplashScreen = '/';
@@ -16,7 +16,7 @@ abstract class AppRouter {
       _route(rSplashScreen, const SplashScreen()),
       _route(rChoiceScreen, const ChoiceScreen()),
       _route(rQuizGenerating, const ExamGenerating()),
-      _route(rQuizMarking, const ExamMarking()),
+      _route(rQuizMarking, const ExamAnalysis()),
     ],
   );
 

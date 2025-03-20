@@ -207,17 +207,17 @@ class _SelectFileButtonState extends State<SelectFileButton> {
         errorDetails = null;
       });
 
-      // Debug logs
+      
       debugPrint('Uploading file: ${selectedFile!.name}');
       debugPrint('Number of Questions: $numberOfQuestions');
       debugPrint('From Page: $fromPage, To Page: $toPage');
       debugPrint('Question Types: $questionTypes');
       debugPrint('Difficulty: $difficulty');
 
-      // Set your API URL (adjust host, port, and protocol as needed)
-      String apiUrl = 'https://192.168.1.8:7053/api/exam';
+      
+      String apiUrl = 'https://192.168.1.6:7053/api/exam/create';
 
-      // Build query parameters
+      
       final queryParams = {
         'NumberOfQuestions': numberOfQuestions.toString(),
         'FromPage': fromPage.toString(),
@@ -257,7 +257,7 @@ class _SelectFileButtonState extends State<SelectFileButton> {
 
       // Send the request with timeout
       var streamedResponse = await request.send().timeout(
-        const Duration(seconds: 30),
+        const Duration(minutes: 10),
         onTimeout: () {
           throw TimeoutException(
               'Connection timed out. Ensure the server is running and accessible.');
