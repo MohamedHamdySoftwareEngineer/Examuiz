@@ -1,52 +1,41 @@
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:examuiz/features/Exam%20Generating/presentation/views/widgets/select_file_button.dart';
 import 'package:flutter/material.dart';
+import 'package:html_to_pdf/html_to_pdf.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../../../constants.dart';
 import '../../../../core/widgets/my_app_bar.dart';
+import 'package:open_filex/open_filex.dart';
 
 class ExamGenerating extends StatelessWidget {
   const ExamGenerating({super.key});
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: const MyAppBar(),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF6448FE), Color(0xFF5FC6FF)],
-          ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight,
-                    ),
-                    child: IntrinsicHeight(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          const Spacer(flex: 1),
-                          _buildUploadContainer(context),
-                          const Spacer(flex: 1),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
+  /// Inserts a page-break before the answers section.
+  /// Since your answers are marked with <section class='answers'>, we insert an explicit div before it.
+  String _injectPageBreak(String htmlContent) {
+    return htmlContent.replaceAll(
+      "<section class='answers'>",
+      "<div style='page-break-before: always;'></div><section class='answers'>",
+    );
+  }
+
+  /// Converts an HTML string to a PDF file.
+  /// The HTML is modified so that the answers section starts on a new page.
+  Future<File> _convertHtmlToPdf(String htmlContent) async {
+    String modifiedHtml = _injectPageBreak(htmlContent);
+    Directory tempDir = await getTemporaryDirectory();
+    File generatedPdfFile = await HtmlToPdf.convertFromHtmlContent(
+      htmlContent: modifiedHtml,
+      printPdfConfiguration: PrintPdfConfiguration(
+        targetDirectory: tempDir.path,
+        targetName: "exam_pdf_${DateTime.now().millisecondsSinceEpoch}",
+        printSize: PrintSize.A4,
+        printOrientation: PrintOrientation.Portrait,
+        linksClickable: false,
       ),
     );
+    return generatedPdfFile;
   }
 
   Widget _buildUploadContainer(BuildContext context) {
@@ -109,8 +98,7 @@ class ExamGenerating extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 25),
-
-          // File type indicator
+          // File type indicator.
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
@@ -133,12 +121,59 @@ class ExamGenerating extends StatelessWidget {
               ],
             ),
           ),
-
           const SizedBox(height: 30),
-
-          // Select file button with original GestureDetector
-          const SelectFileButton(),
+          // Pass a callback to the SelectFileButton to handle HTML conversion.
+          SelectFileButton(
+            onHtmlReceived: (Uint8List htmlBytes) async {
+              String htmlContent = String.fromCharCodes(htmlBytes);
+              File pdfFile = await _convertHtmlToPdf(htmlContent);
+              await OpenFilex.open(pdfFile.path);
+            },
+          ),
         ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: const MyAppBar(),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF6448FE), Color(0xFF5FC6FF)],
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight,
+                    ),
+                    child: IntrinsicHeight(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Spacer(flex: 1),
+                          _buildUploadContainer(context),
+                          const Spacer(flex: 1),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
       ),
     );
   }

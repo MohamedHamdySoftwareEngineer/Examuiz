@@ -9,32 +9,14 @@ import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
+import 'package:html_to_pdf/html_to_pdf.dart';
 
-void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'PDF Exam Uploader',
-      home: Scaffold(
-        appBar: AppBar(
-          title: const Text('PDF Exam Uploader'),
-        ),
-        body: const Padding(
-          padding: EdgeInsets.all(16.0),
-          child: SelectFileButton(),
-        ),
-      ),
-    );
-  }
-}
+typedef HtmlCallback = Future<void> Function(Uint8List htmlBytes);
 
 class SelectFileButton extends StatefulWidget {
-  const SelectFileButton({Key? key}) : super(key: key);
+  /// Callback that receives the HTML bytes from the backend.
+  final HtmlCallback? onHtmlReceived;
+  const SelectFileButton({Key? key, this.onHtmlReceived}) : super(key: key);
 
   @override
   State<SelectFileButton> createState() => _SelectFileButtonState();
@@ -45,6 +27,15 @@ class _SelectFileButtonState extends State<SelectFileButton> {
   bool isUploading = false;
   String? fileName;
   String? errorDetails;
+
+  /// Inserts an explicit page-break div before the answers section.
+  String _injectPageBreak(String htmlContent) {
+    // This inserts a div with a page break before the answers section.
+    return htmlContent.replaceAll(
+      "<section class='answers'>",
+      "<div style='page-break-before: always;'></div><section class='answers'>",
+    );
+  }
 
   Future<void> _pickFile() async {
     try {
@@ -65,7 +56,7 @@ class _SelectFileButtonState extends State<SelectFileButton> {
           SnackBar(content: Text('Selected file: $fileName')),
         );
 
-        // Open dialog to enter exam parameters (the file itself is the exam textbook)
+        // Open dialog to enter exam parameters.
         _showParametersDialog();
       }
     } catch (e) {
@@ -76,7 +67,6 @@ class _SelectFileButtonState extends State<SelectFileButton> {
   }
 
   void _showParametersDialog() {
-    // Controllers for the numeric parameters
     final TextEditingController numberOfQuestionsController =
         TextEditingController(text: '10');
     final TextEditingController fromPageController =
@@ -167,15 +157,15 @@ class _SelectFileButtonState extends State<SelectFileButton> {
                 if (numberOfQuestions <= 0) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                        content: Text(
-                            'Number of Questions must be positive')),
+                        content:
+                            Text('Number of Questions must be positive')),
                   );
                   return;
                 }
 
                 Navigator.of(context).pop(); // Close dialog
 
-                // Upload file with parameters
+                // Upload file with parameters.
                 _uploadFile(
                   numberOfQuestions: numberOfQuestions,
                   fromPage: fromPage,
@@ -207,17 +197,13 @@ class _SelectFileButtonState extends State<SelectFileButton> {
         errorDetails = null;
       });
 
-      
       debugPrint('Uploading file: ${selectedFile!.name}');
       debugPrint('Number of Questions: $numberOfQuestions');
       debugPrint('From Page: $fromPage, To Page: $toPage');
       debugPrint('Question Types: $questionTypes');
       debugPrint('Difficulty: $difficulty');
 
-      
       String apiUrl = 'https://192.168.1.6:7053/api/exam/create';
-
-      
       final queryParams = {
         'NumberOfQuestions': numberOfQuestions.toString(),
         'FromPage': fromPage.toString(),
@@ -226,18 +212,15 @@ class _SelectFileButtonState extends State<SelectFileButton> {
         'Difficulty': difficulty,
       };
 
-      // Create URL with query parameters
       var uri = Uri.parse(apiUrl).replace(queryParameters: queryParams);
       debugPrint('Request URL: ${uri.toString()}');
 
-      // Create the multipart request
       var request = http.MultipartRequest('POST', uri);
       request.headers['Content-Type'] = 'multipart/form-data';
 
-      // Upload the PDF file as the "ExamTextBook"
       if (selectedFile!.path != null) {
         request.files.add(await http.MultipartFile.fromPath(
-          'ExamTextBook', // The API expects the file under this key
+          'ExamTextBook',
           selectedFile!.path!,
           contentType: MediaType('application', 'pdf'),
         ));
@@ -255,7 +238,6 @@ class _SelectFileButtonState extends State<SelectFileButton> {
         debugPrint('File field: ${file.field}, filename: ${file.filename}');
       }
 
-      // Send the request with timeout
       var streamedResponse = await request.send().timeout(
         const Duration(minutes: 10),
         onTimeout: () {
@@ -268,9 +250,7 @@ class _SelectFileButtonState extends State<SelectFileButton> {
       debugPrint('Response status: ${response.statusCode}');
       debugPrint('Response headers: ${response.headers}');
 
-      // Check for a successful 2xx status code
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        // Instead of auto-saving, show a dialog offering to download the HTML file
         _showDownloadDialog(response.bodyBytes);
       } else {
         debugPrint('Error response: ${response.body}');
@@ -294,6 +274,7 @@ class _SelectFileButtonState extends State<SelectFileButton> {
     }
   }
 
+  /// Shows a dialog that converts the returned HTML to PDF and opens it.
   Future<void> _showDownloadDialog(Uint8List htmlBytes) async {
     showDialog(
       context: context,
@@ -301,21 +282,34 @@ class _SelectFileButtonState extends State<SelectFileButton> {
         return AlertDialog(
           title: const Text('Exam Generated'),
           content: const Text(
-              'Your exam has been generated successfully.\nWould you like to open the HTML file?'),
+              'Your exam has been generated successfully.\nWould you like to open the generated PDF file?'),
           actions: [
             TextButton(
               onPressed: () async {
-                // Save the HTML file and open it
-                final timestamp = DateTime.now().millisecondsSinceEpoch;
-                final directory = await getApplicationDocumentsDirectory();
-                final htmlFilePath = '${directory.path}/exam_$timestamp.html';
-                final htmlFile = File(htmlFilePath);
-                await htmlFile.writeAsBytes(htmlBytes);
-                Navigator.of(context).pop(); // close dialog
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('HTML file saved at $htmlFilePath')),
+                String htmlContent = utf8.decode(htmlBytes);
+                // Inject an explicit page-break before the answers section.
+                String modifiedHtml = _injectPageBreak(htmlContent);
+                Directory tempDir = await getTemporaryDirectory();
+                File pdfFile = await HtmlToPdf.convertFromHtmlContent(
+                  htmlContent: modifiedHtml,
+                  printPdfConfiguration: PrintPdfConfiguration(
+                    targetDirectory: tempDir.path,
+                    targetName:
+                        "exam_pdf_${DateTime.now().millisecondsSinceEpoch}",
+                    printSize: PrintSize.A4,
+                    printOrientation: PrintOrientation.Portrait,
+                    linksClickable: false,
+                  ),
                 );
-                await OpenFilex.open(htmlFilePath);
+                Navigator.of(context).pop(); // Close dialog
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                      content: Text('PDF file saved at ${pdfFile.path}')),
+                );
+                await OpenFilex.open(pdfFile.path);
+                if (widget.onHtmlReceived != null) {
+                  await widget.onHtmlReceived!(htmlBytes);
+                }
               },
               child: const Text('Open'),
             ),

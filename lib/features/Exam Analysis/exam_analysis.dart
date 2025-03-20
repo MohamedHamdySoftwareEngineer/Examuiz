@@ -1,7 +1,11 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
+// Hide the Border class from excel so it doesn't conflict with Flutter's Border.
+import 'package:excel/excel.dart' hide Border;
+import 'package:pie_chart/pie_chart.dart';
 
 class ExamAnalysis extends StatefulWidget {
   const ExamAnalysis({Key? key}) : super(key: key);
@@ -12,11 +16,15 @@ class ExamAnalysis extends StatefulWidget {
 
 class _ExamAnalysisState extends State<ExamAnalysis> {
   final TextEditingController _subjectNameController = TextEditingController();
+
   String? _pdfPath;
   String? _excelPath;
   bool _isLoading = false;
   bool _showResults = false;
+
   Map<String, dynamic>? _analysisResults;
+  // Map to hold the averages for each question
+  Map<String, double>? _questionAverages;
 
   @override
   void dispose() {
@@ -37,7 +45,7 @@ class _ExamAnalysisState extends State<ExamAnalysis> {
     }
   }
 
-  // Picks an Excel/CSV file
+  // Picks an Excel/CSV file and calculate averages from it.
   Future<void> _pickExcel() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -47,8 +55,84 @@ class _ExamAnalysisState extends State<ExamAnalysis> {
       setState(() {
         _excelPath = result.files.single.path;
       });
+      // After selecting Excel file, calculate the averages
+      _calculateAverages();
     }
   }
+
+  // Reads the Excel file and calculates the average for each question column
+  Future<void> _calculateAverages() async {
+  if (_excelPath == null) return;
+
+  try {
+    // 1. Read the file bytes and decode the Excel file.
+    final bytes = File(_excelPath!).readAsBytesSync();
+    final excel = Excel.decodeBytes(bytes);
+
+    // 2. Assume data is in the first sheet.
+    final sheet = excel.tables[excel.tables.keys.first];
+    if (sheet == null) {
+      debugPrint("No sheet found in Excel file.");
+      return;
+    }
+
+    // 3. The first row is the header row.
+    // For example: [Student Name, Q1, Q2, Q3, Q4]
+    final headerRow = sheet.row(0).map((cell) => cell?.value?.toString() ?? '').toList();
+    final totalColumns = headerRow.length;
+
+    debugPrint("Header row: $headerRow");
+
+    // 4. Calculate total number of students.
+    // We assume every row after header is one student.
+    final totalStudents = sheet.maxRows - 1;
+    if (totalStudents <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No student data found in Excel file.')),
+      );
+      return;
+    }
+
+    // 5. For each question column (columns 1 to totalColumns-1), calculate the sum.
+    // If a cell is missing or non-numeric, treat its value as 0.
+    Map<int, double> sumMap = {};
+    for (int rowIndex = 1; rowIndex < sheet.maxRows; rowIndex++) {
+      final row = sheet.row(rowIndex);
+      // Loop for each question column starting at 1 (skipping Student Name)
+      for (int colIndex = 1; colIndex < totalColumns; colIndex++) {
+        // Get the cell value as a double; if parsing fails, use 0.
+        double cellValue = double.tryParse(row[colIndex]?.value?.toString() ?? '0') ?? 0;
+        sumMap[colIndex] = (sumMap[colIndex] ?? 0) + cellValue;
+      }
+    }
+
+    // 6. Compute the average for each question by dividing the sum by totalStudents.
+    Map<String, double> averages = {};
+    for (int colIndex = 1; colIndex < totalColumns; colIndex++) {
+      final columnName = headerRow[colIndex]; // e.g., "Q1", "Q2", etc.
+      final total = sumMap[colIndex] ?? 0;
+      final average = total / totalStudents;
+      averages[columnName] = average;
+      debugPrint("Column '$columnName': total = $total, average = $average");
+    }
+
+    setState(() {
+      _questionAverages = averages;
+      debugPrint("_questionAverages: $_questionAverages");
+    });
+
+    if (_questionAverages!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No numeric data found in the Excel columns.')),
+      );
+    }
+  } catch (e) {
+    debugPrint("Error reading Excel file: $e");
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error reading Excel file: $e')),
+    );
+  }
+}
 
   Future<void> _analyzeExam() async {
     if (_subjectNameController.text.isEmpty || _pdfPath == null || _excelPath == null) {
@@ -61,37 +145,29 @@ class _ExamAnalysisState extends State<ExamAnalysis> {
     setState(() => _isLoading = true);
 
     try {
-      // 1. Build the URL with query param "SubjectName"
       final apiUrl = 'https://192.168.1.6:7053/api/exam/analyze';
       final queryParams = {'SubjectName': _subjectNameController.text};
       final uri = Uri.parse(apiUrl).replace(queryParameters: queryParams);
 
-      // 2. Create the MultipartRequest
       final request = http.MultipartRequest('POST', uri);
-
-      // 3. Attach the Excel file under key "StudentsAnswersExcelFile"
       request.files.add(
         await http.MultipartFile.fromPath('StudentsAnswersExcelFile', _excelPath!),
       );
-
-      // 4. Attach the PDF file under key "ExamPDF_File"
       request.files.add(
         await http.MultipartFile.fromPath('ExamPDF_File', _pdfPath!),
       );
 
-      // 5. Send the request
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        // Parse the JSON response
         final backendResponse = jsonDecode(response.body) as Map<String, dynamic>;
         setState(() {
           _analysisResults = backendResponse;
+          // Show the results page
           _showResults = true;
         });
       } else {
-        // Show error message if the server responds with non-2xx code
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error: ${response.statusCode} ${response.reasonPhrase}\n${response.body}'),
@@ -99,7 +175,6 @@ class _ExamAnalysisState extends State<ExamAnalysis> {
         );
       }
     } catch (e) {
-      // Show any exceptions (e.g. network errors, file I/O issues)
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Exception: $e')),
       );
@@ -111,9 +186,8 @@ class _ExamAnalysisState extends State<ExamAnalysis> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // No AppBar as requested
+      
       body: Container(
-        // This ensures the background extends to full screen
         width: double.infinity,
         height: double.infinity,
         decoration: const BoxDecoration(
@@ -123,22 +197,21 @@ class _ExamAnalysisState extends State<ExamAnalysis> {
             colors: [Color(0xFF6448FE), Color(0xFF5FC6FF)],
           ),
         ),
-        // Use LayoutBuilder to get the constraints of the parent widget
         child: LayoutBuilder(
           builder: (context, constraints) {
             return SafeArea(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                // This ensures the content has at least the height of the available space
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
-                    minHeight: constraints.maxHeight - MediaQuery.of(context).padding.top - MediaQuery.of(context).padding.bottom,
+                    minHeight: constraints.maxHeight -
+                        MediaQuery.of(context).padding.top -
+                        MediaQuery.of(context).padding.bottom,
                   ),
                   child: IntrinsicHeight(
                     child: Column(
                       children: [
                         const SizedBox(height: 30),
-                        // Expand the content to fill available space
                         Expanded(
                           child: _showResults ? _buildResultsView() : _buildInputForm(),
                         ),
@@ -149,18 +222,19 @@ class _ExamAnalysisState extends State<ExamAnalysis> {
                 ),
               ),
             );
-          }
+          },
         ),
       ),
     );
   }
 
+  // -------------------------
+  // 1) The Input Form Screen
+  // -------------------------
   Widget _buildInputForm() {
     return Container(
       padding: const EdgeInsets.all(25),
-      // This makes the container expand to fill available space
       width: double.infinity,
-      // Remove fixed height to allow expansion
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.95),
         borderRadius: BorderRadius.circular(20),
@@ -175,8 +249,6 @@ class _ExamAnalysisState extends State<ExamAnalysis> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        // Make the column expand
-        mainAxisSize: MainAxisSize.max,
         children: [
           const Center(
             child: Text(
@@ -191,7 +263,7 @@ class _ExamAnalysisState extends State<ExamAnalysis> {
           const SizedBox(height: 15),
           Center(
             child: Text(
-              'Upload your exam PDF (ExamPDF_File) and Excel (StudentsAnswersExcelFile) to get analysis',
+              'Upload your exam PDF and Excel file to get analysis.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 16, color: Colors.grey[600]),
             ),
@@ -235,7 +307,6 @@ class _ExamAnalysisState extends State<ExamAnalysis> {
             onTap: _pickPDF,
             filePath: _pdfPath,
           ),
-          // Add a spacer to push the button to the bottom when there's extra space
           const Spacer(),
           const SizedBox(height: 30),
           GestureDetector(
@@ -252,7 +323,7 @@ class _ExamAnalysisState extends State<ExamAnalysis> {
                 borderRadius: BorderRadius.circular(15),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF6448FE).withOpacity(0.3),
+                    color: Color(0xFF6448FE).withOpacity(0.3),
                     blurRadius: 8,
                     spreadRadius: 1,
                     offset: const Offset(0, 4),
@@ -297,7 +368,11 @@ class _ExamAnalysisState extends State<ExamAnalysis> {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Color(0xFF333333)),
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF333333),
+          ),
         ),
         const SizedBox(height: 8),
         GestureDetector(
@@ -333,46 +408,82 @@ class _ExamAnalysisState extends State<ExamAnalysis> {
     );
   }
 
+  // --------------------------
+  // 2) The Results Page Screen
+  // --------------------------
   Widget _buildResultsView() {
     if (_analysisResults == null) {
       return const Center(child: CircularProgressIndicator());
     }
-    
+
     return Container(
-      // Make sure results view also stretches to fill height
       width: double.infinity,
       child: Column(
-        // Allow column to expand to fill available space
-        mainAxisSize: MainAxisSize.max,
         children: [
+          // Header
           _buildResultsHeader(),
           const SizedBox(height: 20),
-          
-          // Check if 'Subjects' key exists in the results
-          if (_analysisResults!.containsKey('Subjects') && 
-              _analysisResults!['Subjects'] is Map<String, dynamic>) 
+
+          // -------------------------------
+          // Show the Pie Chart AFTER Analyze
+          // -------------------------------
+          if (_questionAverages != null && _questionAverages!.isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.95),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    spreadRadius: 2,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  const Text(
+                    'Average Scores per Question',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 250,
+                    child: PieChart(
+                      dataMap: _questionAverages!,
+                      chartType: ChartType.disc,
+                      chartValuesOptions: const ChartValuesOptions(
+                        showChartValuesInPercentage: true,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+          ],
+
+          // Check for "Subjects" and "Suggestions" keys in the analysis results
+          if (_analysisResults!.containsKey('Subjects') &&
+              _analysisResults!['Subjects'] is Map<String, dynamic>)
             ...[
               _buildSubjectsCard(),
               const SizedBox(height: 20),
             ],
-          
-          // Check if 'Suggestions' key exists in the results
-          if (_analysisResults!.containsKey('Suggestions') && 
-              _analysisResults!['Suggestions'] is List) 
+          if (_analysisResults!.containsKey('Suggestions') &&
+              _analysisResults!['Suggestions'] is List)
             ...[
               _buildSuggestionsCard(),
               const SizedBox(height: 20),
             ],
-          
-          // Add a fallback for unexpected data structure
-          if (!_analysisResults!.containsKey('Subjects') || 
+          if (!_analysisResults!.containsKey('Subjects') ||
               !_analysisResults!.containsKey('Suggestions'))
             _buildGenericResultsCard(),
-            
-          // Add a spacer to push the button to the bottom when there's extra space
           const Spacer(),
-          
-          // Back button
+
+          // Back / "Analyze Another Exam" button
           GestureDetector(
             onTap: () {
               setState(() {
@@ -381,6 +492,7 @@ class _ExamAnalysisState extends State<ExamAnalysis> {
                 _pdfPath = null;
                 _excelPath = null;
                 _analysisResults = null;
+                _questionAverages = null;
               });
             },
             child: Container(
@@ -424,52 +536,9 @@ class _ExamAnalysisState extends State<ExamAnalysis> {
     );
   }
 
-  // New method to display results when the structure is unexpected
-  Widget _buildGenericResultsCard() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.95),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            spreadRadius: 2,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Wrap(
-            spacing: 10,
-            children: [
-              Icon(Icons.assessment, color: Color(0xFF6448FE), size: 24),
-              Text(
-                'Analysis Results',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF333333),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Text(
-            _analysisResults.toString(),
-            style: const TextStyle(
-              fontSize: 14,
-              height: 1.5,
-              color: Colors.black87,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // --------------------------
+  // Helper Widgets (Unchanged)
+  // --------------------------
 
   Widget _buildResultsHeader() {
     return Container(
@@ -541,7 +610,7 @@ class _ExamAnalysisState extends State<ExamAnalysis> {
 
   Widget _buildSubjectsCard() {
     final subjects = _analysisResults!['Subjects'] as Map<String, dynamic>;
-    
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -588,7 +657,6 @@ class _ExamAnalysisState extends State<ExamAnalysis> {
               subject: subjects['Easiest'].toString(),
               color: Colors.green,
             ),
-          // Display other subjects if present
           ...subjects.entries
               .where((entry) => entry.key != 'Hardest' && entry.key != 'Easiest')
               .map((entry) {
@@ -621,7 +689,7 @@ class _ExamAnalysisState extends State<ExamAnalysis> {
     } else {
       iconData = Icons.subject;
     }
-    
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -675,7 +743,7 @@ class _ExamAnalysisState extends State<ExamAnalysis> {
 
   Widget _buildSuggestionsCard() {
     final suggestions = _analysisResults!['Suggestions'] as List;
-    
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -757,6 +825,52 @@ class _ExamAnalysisState extends State<ExamAnalysis> {
                 height: 1.5,
                 color: Colors.black87,
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGenericResultsCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.95),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            spreadRadius: 2,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Wrap(
+            spacing: 10,
+            children: [
+              Icon(Icons.assessment, color: Color(0xFF6448FE), size: 24),
+              Text(
+                'Analysis Results',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF333333),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Text(
+            _analysisResults.toString(),
+            style: const TextStyle(
+              fontSize: 14,
+              height: 1.5,
+              color: Colors.black87,
             ),
           ),
         ],

@@ -89,7 +89,7 @@ class ChoiceScreen extends StatelessWidget {
               child: _buildOptionCard(
                 context,
                 icon: Icons.add_circle_outline,
-                title: 'Generate Quiz',
+                title: 'Generate Exam',
                 color: const Color(0xFF5FC6FF),
                 onTap: () => GoRouter.of(context).push(AppRouter.rQuizGenerating),
               ),
@@ -99,7 +99,7 @@ class ChoiceScreen extends StatelessWidget {
               child: _buildOptionCard(
                 context,
                 icon: Icons.check_circle_outline,
-                title: 'Mark Quiz',
+                title: 'Analyze Exam',
                 color: const Color(0xFF4CD97B),
                 onTap: () => GoRouter.of(context).push(AppRouter.rQuizMarking),
               ),
