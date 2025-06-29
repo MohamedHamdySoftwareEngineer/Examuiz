@@ -1,4 +1,4 @@
-import 'package:examuiz/splah_screen.dart';
+import 'package:examuiz/features/Splash%20Screen/splash_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/Choice Screen/choice_screen.dart';

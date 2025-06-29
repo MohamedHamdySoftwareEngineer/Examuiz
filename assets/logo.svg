@@ -1,0 +1,26 @@
+<svg viewBox="0 0 400 240" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background gradient - original colors -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6448FE" />
+      <stop offset="100%" stop-color="#5FC6FF" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Main circular background -->
+  <circle cx="200" cy="120" r="100" fill="url(#bgGradient)" />
+  
+  <!-- Sheet with heavier background -->
+  <rect x="160" y="75" width="80" height="90" rx="3" fill="white" opacity="0.4" stroke="white" stroke-width="3" />
+  
+  <!-- Three simple horizontal lines suggesting text -->
+  <line x1="170" y1="95" x2="230" y2="95" stroke="white" stroke-width="2" />
+  <line x1="170" y1="110" x2="230" y2="110" stroke="white" stroke-width="2" />
+  <line x1="170" y1="125" x2="230" y2="125" stroke="white" stroke-width="2" />
+  
+  <!-- Green checkmark - shorter and positioned lower -->
+  <path d="M180 145 L190 155 L215 130" stroke="#2ECC40" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+  
+  <!-- Text -->
+  <text x="200" y="195" font-family="Arial, sans-serif" font-size="24" font-weight="bold" text-anchor="middle" fill="white">Examuiz</text>
+</svg>

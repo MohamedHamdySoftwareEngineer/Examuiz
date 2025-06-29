@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
-import 'constants.dart';
+import '../../core/utils/constants.dart';
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({Key? key}) : super(key: key);
+  const SplashScreen({super.key});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();
@@ -88,9 +88,9 @@ class _SplashScreenState extends State<SplashScreen>
     _animationController.forward();
 
     // Navigate to home screen after animation completes
-    Future.delayed(const Duration(seconds: 5), () {
+    Future.delayed(const Duration(seconds: 3), () {
       if (mounted) {
-        GoRouter.of(context).push(AppRouter.rChoiceScreen);
+        GoRouter.of(context).go(AppRouter.rChoiceScreen);
       }
     });
   }
@@ -127,13 +127,9 @@ class _SplashScreenState extends State<SplashScreen>
                     children: [
                       Transform.scale(
                         scale: _pulseAnimation.value,
-                        child: SizedBox(
-                          width: 220,
-                          height: 220,
-                          child: SvgPicture.asset(
-                            'assets/examuiz-logo.svg',
-                            fit: BoxFit.contain,
-                          ),
+                        child: SvgPicture.asset(
+                          'assets/logo.svg',
+                          fit: BoxFit.fill,
                         ),
                       ),
                       const SizedBox(height: 30),

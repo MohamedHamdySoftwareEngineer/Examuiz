@@ -145,7 +145,7 @@ class _ExamAnalysisState extends State<ExamAnalysis> {
     setState(() => _isLoading = true);
 
     try {
-      final apiUrl = 'https://192.168.1.6:7053/api/exam/analyze';
+      const apiUrl = 'https://192.168.1.8:7053/api/exam/analyze';
       final queryParams = {'SubjectName': _subjectNameController.text};
       final uri = Uri.parse(apiUrl).replace(queryParameters: queryParams);
 
