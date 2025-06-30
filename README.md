@@ -103,17 +103,17 @@ flutter run
 
 
 ## 📱 UI
-> ![App Screenshot](assets/images/splash_screen.jpg)
-> ![App Screenshot](assets/images/home_screen.jpg)
-> ![App Screenshot](assets/images/generate_exam_screen.jpg)
-> ![App Screenshot](assets/images/exam_parameters.jpg)
-> ![App Screenshot](assets/images/exam_opening.jpg)
-> ![App Screenshot](assets/images/the_generated_exam.jpg)
-> ![App Screenshot](assets/images/exam_analysis_screen.jpg)
-> ![App Screenshot](assets/images/analysis_result_1.jpg)
-> ![App Screenshot](assets/images/analysis_result_2.jpg)
-> ![App Screenshot](assets/images/analysis_result_3.jpg)
-> ![App Screenshot](assets/images/analysis_result_4.jpg)
+> ![App Screenshot](assets/images/splash_screen.png)
+> ![App Screenshot](assets/images/home_screen.png)
+> ![App Screenshot](assets/images/generate_exam_screen.png)
+> ![App Screenshot](assets/images/exam_parameters.png)
+> ![App Screenshot](assets/images/exam_opening.png)
+> ![App Screenshot](assets/images/the_generated_exam.png)
+> ![App Screenshot](assets/images/exam_analysis_screen.png)
+> ![App Screenshot](assets/images/analysis_result_1.png)
+> ![App Screenshot](assets/images/analysis_result_2.png)
+> ![App Screenshot](assets/images/analysis_result_3.png)
+> ![App Screenshot](assets/images/analysis_result_4.png)
 
 
 ## 🎥 Demo Video
