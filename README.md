@@ -102,18 +102,77 @@ flutter run
 > ![App Structure](assets/images/Hierarchy.png)
 
 
-## 📱 UI
-> ![App Screenshot](assets/images/splash_screen.png)
-> ![App Screenshot](assets/images/home_screen.png)
-> ![App Screenshot](assets/images/generate_exam_screen.png)
-> ![App Screenshot](assets/images/exam_parameters.png)
-> ![App Screenshot](assets/images/exam_opening.png)
-> ![App Screenshot](assets/images/the_generated_exam.png)
-> ![App Screenshot](assets/images/exam_analysis_screen.png)
-> ![App Screenshot](assets/images/analysis_result_1.png)
-> ![App Screenshot](assets/images/analysis_result_2.png)
-> ![App Screenshot](assets/images/analysis_result_3.png)
-> ![App Screenshot](assets/images/analysis_result_4.png)
+📱 UI Screenshots
+<div align="center">
+  <table>
+    <tr>
+      <td align="center">
+        <img src="assets/images/splash_screen.png" width="300" alt="Splash Screen"/>
+        <br/>
+        <sub><b>Splash Screen</b></sub>
+      </td>
+      <td align="center">
+        <img src="assets/images/home_screen.png" width="300" alt="Home Screen"/>
+        <br/>
+        <sub><b>Home Screen</b></sub>
+      </td>
+      <td align="center">
+        <img src="assets/images/generate_exam_screen.png" width="300" alt="Generate Exam Screen"/>
+        <br/>
+        <sub><b>Generate Exam</b></sub>
+      </td>
+    </tr>
+    <tr>
+      <td align="center">
+        <img src="assets/images/exam_parameters.png" width="300" alt="Exam Parameters"/>
+        <br/>
+        <sub><b>Exam Parameters</b></sub>
+      </td>
+      <td align="center">
+        <img src="assets/images/exam_opening.png" width="300" alt="Exam Opening"/>
+        <br/>
+        <sub><b>Exam Opening</b></sub>
+      </td>
+      <td align="center">
+        <img src="assets/images/the_generated_exam.png" width="300" alt="Generated Exam"/>
+        <br/>
+        <sub><b>Generated Exam</b></sub>
+      </td>
+    </tr>
+    <tr>
+      <td align="center">
+        <img src="assets/images/exam_analysis_screen.png" width="300" alt="Analysis Screen"/>
+        <br/>
+        <sub><b>Exam Analysis</b></sub>
+      </td>
+      <td align="center">
+        <img src="assets/images/analysis_result_1.png" width="300" alt="Analysis Result 1"/>
+        <br/>
+        <sub><b>Analysis Result 1</b></sub>
+      </td>
+      <td align="center">
+        <img src="assets/images/analysis_result_2.png" width="300" alt="Analysis Result 2"/>
+        <br/>
+        <sub><b>Analysis Result 2</b></sub>
+      </td>
+    </tr>
+    <tr>
+      <td align="center">
+        <img src="assets/images/analysis_result_3.png" width="300" alt="Analysis Result 3"/>
+        <br/>
+        <sub><b>Analysis Result 3</b></sub>
+      </td>
+      <td align="center">
+        <img src="assets/images/analysis_result_4.png" width="300" alt="Analysis Result 4"/>
+        <br/>
+        <sub><b>Analysis Result 4</b></sub>
+      </td>
+      <td align="center">
+        <!-- Empty cell for symmetry -->
+      </td>
+    </tr>
+  </table>
+</div>
 
 
 ## 🎥 Demo Video
